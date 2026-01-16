@@ -20,9 +20,10 @@
 ## along with adcc. If not, see <http://www.gnu.org/licenses/>.
 ##
 ## ---------------------------------------------------------------------
+from collections.abc import Sequence
 
 
-def __getattr__(attr):
+def __getattr__(attr: Sequence[str]) -> str:
     """
     Return a multi-dimensional block string like 'o1o2v1v1'
     when requesting the attribute 'ocvv'.
