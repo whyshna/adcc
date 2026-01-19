@@ -62,6 +62,22 @@ def mtm_adc2(mp, op, intermediates):
     )
     return ampl + AmplitudeVector(ph=f1, pphh=f2)
 
+ def mtm_adc3(mp, op, intermediates):
+    t2 = mp.t2(b.oovv) #t^(1)_ijab
+    td2 = mp.td2(b.oovv) #t^2_ijab
+    
+    ampl = mtm_adc2(mp, op, intermediates)
+
+    f2 = (
+        + 1.0 * einsum("ijbc,ac->ijab", td2, op.ov) 
+        - 1.0 * einsum("ijac,bc->ijab", td2, op.vv)
+        + 1.0 * einsum("ikab,kj->ijab", td2, op.oo)
+        - 1.0 * einsum("jkab,ki->ijab", td2, op.oo)  #need to add triples!!!!
+    )
+
+    #f1 = !!! # need to add ~50 terms!!
+       
+
 
 def mtm_cvs_adc0(mp, op, intermediates):
     f1 = op.cv if op.is_symmetric else op.vc.transpose()
@@ -86,6 +102,7 @@ DISPATCH = {
     "adc1": mtm_adc1,
     "adc2": mtm_adc2,
     "adc2x": mtm_adc2,  # Identical to ADC(2)
+    "adc3": mtm_adc3,
     "cvs-adc0": mtm_cvs_adc0,
     "cvs-adc1": mtm_cvs_adc0,  # Identical to CVS-ADC(0)
     "cvs-adc2": mtm_cvs_adc2,
