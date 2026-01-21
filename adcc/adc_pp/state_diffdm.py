@@ -130,6 +130,13 @@ def diffdm_cvs_adc2(mp, amplitude, intermediates):
     dm.cc -= einsum("kIab,kJab->IJ", u2, u2)
     return dm
 
+def diffdm_adc3(mp, amplitude, intermediates):
+    dm = diffdm_adc2(mp, amplitude, intermediates) #starts from ADC2 values
+    check_doubles_amplitudes([b.o, b.o, b.v, b.v], amplitude) #does it have triples?
+    u1, u2 = amplitude.ph, amplitude.pphh 
+
+    td2 = mp.td2(b.oovv)
+    tt1 = mp.tt1(b.ooovvv) #oder t3?
 
 # dict controlling the dispatch of the state_diffdm function
 DISPATCH = {
