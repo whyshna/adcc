@@ -62,13 +62,13 @@ def mtm_adc2(mp, op, intermediates):
     )
     return ampl + AmplitudeVector(ph=f1, pphh=f2)
 
- def mtm_adc3(mp, op, intermediates):
-    t2 = mp.t2(b.oovv) #t^(1)_ijab
-    td2 = mp.td2(b.oovv) #t^2_ijab
+def mtm_adc3(mp, op, intermediates):
+     t2 = mp.t2(b.oovv) #t^(1)_ijab
+     td2 = mp.td2(b.oovv) #t^2_ijab
     
-    ampl = mtm_adc2(mp, op, intermediates)
+     ampl = mtm_adc2(mp, op, intermediates)
 
-    f2 = (
+     f2 = (
         + 1.0 * einsum("ijbc,ac->ijab", td2, op.ov) 
         - 1.0 * einsum("ijac,bc->ijab", td2, op.vv)
         + 1.0 * einsum("ikab,kj->ijab", td2, op.oo)

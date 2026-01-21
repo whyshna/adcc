@@ -130,13 +130,31 @@ def diffdm_cvs_adc2(mp, amplitude, intermediates):
     dm.cc -= einsum("kIab,kJab->IJ", u2, u2)
     return dm
 
+#ADC(3) dm
 def diffdm_adc3(mp, amplitude, intermediates):
     dm = diffdm_adc2(mp, amplitude, intermediates) #starts from ADC2 values
-    check_doubles_amplitudes([b.o, b.o, b.v, b.v], amplitude) #does it have triples?
+    check_doubles_amplitudes([b.o, b.o, b.v, b.v], amplitude) 
     u1, u2 = amplitude.ph, amplitude.pphh 
 
+    ts2 = mp.ts2(b.ov) #second order singlets
     td2 = mp.td2(b.oovv)
-    tt1 = mp.tt1(b.ooovvv) #oder t3?
+    p0_3 =mp.mp3_diffdm #third order GS density matrix
+
+   
+    #ADC(3) intermediate
+    #ru2 =  TODO
+
+   #Third order contributions to the density matrix
+    dm.oo = (#adc3_pp_oo
+    (- einsum("ia,ja->ij", u1, u1) + 2 * p2_oo
+    + einsum("jkbc,ikac,ab->ij", t2, t2, p1_vv)
+    + 0.5 * einsum("kl,ikbc,jlbc->ij", (((p1.oo), t2), t2))
+    - einsum("jc,ic->ij", ru1, ru1)
+    
+    + einsum("ib,jb->ij", p2_ov, ts2)
+
+    ).symmetrise()
+    )
 
 # dict controlling the dispatch of the state_diffdm function
 DISPATCH = {
