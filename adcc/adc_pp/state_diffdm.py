@@ -31,6 +31,7 @@ from adcc.AmplitudeVector import AmplitudeVector
 from adcc.OneParticleOperator import OneParticleOperator
 
 from .util import check_doubles_amplitudes, check_singles_amplitudes
+import numpy as np
 
 
 def diffdm_adc0(mp, amplitude, intermediates):
@@ -134,34 +135,107 @@ def diffdm_cvs_adc2(mp, amplitude, intermediates):
 def diffdm_adc3(mp, amplitude, intermediates):
     dm = diffdm_adc2(mp, amplitude, intermediates) #starts from ADC2 values
     check_doubles_amplitudes([b.o, b.o, b.v, b.v], amplitude) 
-    u1, u2 = amplitude.ph, amplitude.pphh 
+    ur1, ur2 = amplitude.ph, amplitude.pphh  #ADC amplitudes
 
-    ts2 = mp.ts2(b.ov) #second order singlets
-    td2 = mp.td2(b.oovv)
-    p0_3 =mp.mp3_diffdm #third order GS density matrix
-
+    t2_1 = mp.t2(b.oovv)    #first order doubles
+    t1_2 = mp.mp2_diffdm.ov #second order singles
+    t2_2 = mp.td2(b.oovv)  #second order doubles
+    t3_2 = mp.mp3_diffdm.ooovvv 
+   # third order GS density matrix
+    p0_3 = mp.mp3_diffdm
+    p0_2 = mp.mp2_diffdm 
    
-    #ADC(3) intermediate
-    #ru2 =  TODO
+    # #ADC(3) intermediate
+    # #ru2 =  TODO
 
    #Third order contributions to the density matrix
-    dm.oo = (#adc3_pp_oo
-    (- einsum("ia,ja->ij", u1, u1) + 2 * p2_oo
-    + einsum("jkbc,ikac,ab->ij", t2, t2, p1_vv)
-    + 0.5 * einsum("kl,ikbc,jlbc->ij", (((p1.oo), t2), t2))
-    - einsum("jc,ic->ij", ru1, ru1)
+    tens = einsum("ia,ja->ij", ur1, ur1) 
+    #print(type(tens))
+    print(tens.to_ndarray())
+   # np.testing.assert_allclose(tens.to_ndarray(), tens.to_ndarray(), atol=1e-10)
     
-    + einsum("ib,jb->ij", p2_ov, ts2)
+    dm.oo = ( #adc3_p_oo
+    - 1 * einsum("ia,ja->ij", ur1, ur1)  
+    - 2 * einsum("ikab,jkab->ij", ur2, ur2)  
+    + 1 * einsum("jklc,iklc->ij", einsum("lb,jkbc->jklc", ur1, t2_1), einsum("la,ikac->iklc", ur1, t2_1))  
+    + 0.5 * einsum("ilbc,jlbc->ij", einsum("kl,ikbc->ilbc", einsum("ka,la->kl", ur1, ur1), t2_1), t2_1)  
+    - 1 * einsum("jc,ic->ij", einsum("lb,jlbc->jc", ur1, t2_1), einsum("ka,ikac->ic", ur1, t2_1))
+    +(- 2 * einsum("ib,jb->ij", einsum("ka,ikab->ib", ur1, ur2), t1_2)  
+      - 0.5 * einsum("ik,jk->ij", einsum("ia,ka->ik", ur1, ur1), p0_2.oo)  
+      - 0.5 * einsum("ik,jk->ij", einsum("ia,ka->ik", ur1, ur1), p0_3.oo) 
+      + 1 * einsum("jklc,iklc->ij", einsum("lb,jkbc->jklc", ur1, t2_2), einsum("la,ikac->iklc", ur1, t2_1))  
+      + 0.5 * einsum("ilbc,jlbc->ij", einsum("kl,ikbc->ilbc", einsum("ka,la->kl", ur1, ur1), t2_1), t2_2)  
+      + 0.5 * einsum("jb,ib->ij", einsum("kc,jkbc->jb", einsum("la,klac->kc", ur1, t2_1), t2_1), ur1)  
+      + 0.5 * einsum("jb,ib->ij", einsum("kc,jkbc->jb", einsum("la,klac->kc", ur1, t2_1), t2_2), ur1)  
+      + 0.5 * einsum("jb,ib->ij", einsum("kc,jkbc->jb", einsum("la,klac->kc", ur1, t2_2), t2_1), ur1)  
+      - 1 * einsum("jc,ic->ij", einsum("lb,jlbc->jc", ur1, t2_2), einsum("ka,ikac->ic", ur1, t2_1))
+      ). symmetrise()
 
-    ).symmetrise()
-    )
+   )  
 
+    dm.ov = ( #adc3_p_ov
+    (- 2 * einsum("jb,ijab->ia", ur1, ur2) 
+    + 1 * einsum("ik,ka->ia", einsum("jkbc,ijbc->ik", ur2, t2_1), ur1)  
+    + 1 * einsum("ik,ka->ia", einsum("jkbc,ijbc->ik", ur2, t2_2), ur1)  
+    + 1 * einsum("ijkb,jkab->ia", einsum("ic,jkbc->ijkb", ur1, ur2), t2_1)  
+    + 1 * einsum("ijkb,jkab->ia", einsum("ic,jkbc->ijkb", ur1, ur2), t2_2)  
+    + 1 * einsum("ib,ab->ia", einsum("jc,ijbc->ib", ur1, ur2), p0_2.vv)  
+    - 1 * einsum("ij,ja->ia", einsum("jb,ib->ij", ur1, t1_2), ur1) 
+    - 1 * einsum("ij,ja->ia", einsum("jb,ib->ij", ur1, p0_3.ov), ur1)  
+    - 1 * einsum("ij,ja->ia", einsum("ib,jb->ij", ur1, ur1), t1_2)  
+    - 1 * einsum("ij,ja->ia", einsum("ib,jb->ij", ur1, ur1), p0_3.ov)
+    - 1 * einsum("ja,ij->ia", einsum("kb,jkab->ja", ur1, ur2), p0_2.oo)  
+    - 2 * einsum("kb,ikab->ia", einsum("jc,jkbc->kb", ur1, ur2), t2_1)  
+    - 2 * einsum("kb,ikab->ia", einsum("jc,jkbc->kb", ur1, ur2), t2_2) 
+    + 1 * einsum("kc,ikac->ia", einsum("jk,jc->kc", einsum("jb,kb->jk", ur1, ur1), t1_2), t2_1)  
+    + 1 * einsum("kc,ikac->ia", einsum("jk,jc->kc", einsum("jb,kb->jk", ur1, t1_2), ur1), t2_1)  
+    + 0.5 * einsum("il,la->ia", einsum("ikcd,klcd->il", einsum("jb,ijkbcd->ikcd", ur1, t3_2), t2_1), ur1)  
+    + 0.5 * einsum("iklc,klac->ia", einsum("id,klcd->iklc", ur1, t2_1), einsum("jb,jklabc->klac", ur1, t3_2))  
+    + 0.5 * einsum("ijkb,jkab->ia", einsum("id,jkbd->ijkb", einsum("lc,ilcd->id", ur1, t2_1), t2_1), ur2)  
+    + 0.5 * einsum("ld,ilad->ia", einsum("jklb,jkbd->ld", einsum("lc,jkbc->jklb", ur1, ur2), t2_1), t2_1) 
+    + 0.5 * einsum("il,la->ia", einsum("ikbc,klbc->il", ur2, t2_1), einsum("jd,jlad->la", ur1, t2_1)) 
+    + 0.5 * einsum("kd,ikad->ia", einsum("kl,ld->kd", einsum("jlbc,jkbc->kl", ur2, t2_1), ur1), t2_1)  
+    - 1 * einsum("ij,ja->ia", einsum("ic,jc->ij", einsum("kb,ikbc->ic", ur1, t2_1), t1_2), ur1) 
+    - 1 * einsum("ka,ik->ia", einsum("jc,jkac->ka", ur1, t2_1), einsum("ib,kb->ik", ur1, t1_2))  
+    - 1 * einsum("kc,ikac->ia", einsum("ld,klcd->kc", ur1, t2_1), einsum("jb,ijkabc->ikac", ur1, t3_2)) 
+    - 1 * einsum("ijkc,jkac->ia", einsum("ikld,jlcd->ijkc", einsum("kb,ilbd->ikld", ur1, t2_1), t2_1), ur2)  
+    - 1 * einsum("ijld,jlad->ia", einsum("ijkb,klbd->ijld", einsum("jc,ikbc->ijkb", ur1, ur2), t2_1), t2_1) 
+    - 1 * einsum("kc,ikac->ia", einsum("jb,jkbc->kc", einsum("ld,jlbd->jb", ur1, ur2), t2_1), t2_1) 
+    - 0.5 * einsum("jkbc,ijkabc->ia", einsum("jklc,lb->jkbc", einsum("ld,jkcd->jklc", ur1, t2_1), ur1), t3_2) 
+    - 0.5 * einsum("jkbc,ijkabc->ia", einsum("jl,klbc->jkbc", einsum("jd,ld->jl", ur1, ur1), t2_1), t3_2) 
+    - 0.25 * einsum("ijkl,jkla->ia", einsum("ilcd,jkcd->ijkl", t2_1, t2_1), einsum("lb,jkab->jkla", ur1, ur2))  
+    - 0.25 * einsum("ijkl,jkla->ia", einsum("ijbc,klbc->ijkl", ur2, t2_1), einsum("jd,klad->jkla", ur1, t2_1))  
+    ). symmetrise()
+    
+)
+   
+    dm.vv = ( #adc3_p_vv
+     + 1 * einsum("ia,ib->ab", ur1, ur1) 
+     + 2 * einsum("ijac,ijbc->ab", ur2, ur2) 
+     + 1 * einsum("kb,ka->ab", einsum("jd,jkbd->kb", ur1, t2_1), einsum("ic,ikac->ka", ur1, t2_1)) 
+     - 1 * einsum("jkad,jkbd->ab", einsum("ij,ikad->jkad", einsum("ic,jc->ij", ur1, ur1), t2_1), t2_1) 
+     - 0.5 * einsum("ijkb,ijka->ab", einsum("id,jkbd->ijkb", ur1, t2_1), einsum("ic,jkac->ijka", ur1, t2_1))
+     + (+ 2 * einsum("ja,jb->ab", einsum("ic,ijac->ja", ur1, ur2), t1_2)  
+      - 0.5 * einsum("ib,ia->ab", einsum("ic,bc->ib", ur1, p0_2.vv), ur1)  
+      - 0.5 * einsum("ib,ia->ab", einsum("ic,bc->ib", ur1, p0_3.vv), ur1)  
+      + 1 * einsum("kb,ka->ab", einsum("jd,jkbd->kb", ur1, t2_2), einsum("ic,ikac->ka", ur1, t2_1)) 
+      + 0.5 * einsum("ib,ia->ab", einsum("kd,ikbd->ib", einsum("jc,jkcd->kd", ur1, t2_1), t2_1), ur1)  
+      + 0.5 * einsum("ib,ia->ab", einsum("kd,ikbd->ib", einsum("jc,jkcd->kd", ur1, t2_2), t2_1), ur1)  
+      + 0.5 * einsum("ib,ia->ab", einsum("kd,ikbd->ib", einsum("jc,jkcd->kd", ur1, t2_1), t2_2), ur1)  
+      - 1 * einsum("jkad,jkbd->ab", einsum("ij,ikad->jkad", einsum("ic,jc->ij", ur1, ur1), t2_1), t2_2)  
+      - 0.5 * einsum("ijkb,ijka->ab", einsum("id,jkbd->ijkb", ur1, t2_2), einsum("ic,jkac->ijka", ur1, t2_1))
+       ).symmetrise()  
+
+   )
+    return dm
+    exit()
 # dict controlling the dispatch of the state_diffdm function
 DISPATCH = {
     "adc0": diffdm_adc0,
     "adc1": diffdm_adc0,       # same as ADC(0)
     "adc2": diffdm_adc2,
     "adc2x": diffdm_adc2,
+    "adc3": diffdm_adc3,
     "cvs-adc0": diffdm_adc0,
     "cvs-adc1": diffdm_adc0,   # same as ADC(0)
     "cvs-adc2": diffdm_cvs_adc2,
